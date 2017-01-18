@@ -1,0 +1,29 @@
+{
+  "name": "lite-http",
+  "version": "0.1.0",
+  "description": "A simple HTTP server based on lite runtime framework.",
+  "main": "./dist/index.js",
+  "scripts": {
+    "test": "echo \"No test policies.\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Fenying",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fenying/lite-http.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fenying/lite-http/issues"
+  },
+  "homepage": "https://github.com/fenying/lite-http#readme",
+  "types": "./dist/index.d.ts",
+  "typings": "./dist/index.d.ts",
+  "dependencies": {
+    "lite-core": "0.1.1"
+  },
+  "devDependencies": {
+    "@types/async": "^2.0.37",
+    "@types/node": "^7.0.0"
+  }
+}
