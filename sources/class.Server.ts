@@ -109,15 +109,15 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             req.params = {};
 
-            let reqUrl: libURL.Url = libURL.parse(req.url, true);
+            let url: libURL.Url = libURL.parse(req.url, true);
 
-            req.path = reqUrl.pathname;
+            req.path = (url.pathname[url.pathname.length - 1] === "/") ? url.pathname.substr(0, url.pathname.length - 1) : url.pathname;
 
-            req.queries = reqUrl.query;
+            req.queries = url.query;
 
-            req.queryString = reqUrl.search;
+            req.queryString = url.search;
 
-            reqUrl = undefined;
+            url = undefined;
 
             let cb = function() {
 

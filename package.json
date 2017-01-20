@@ -1,6 +1,6 @@
 {
   "name": "lite-http",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A simple HTTP server based on lite runtime framework.",
   "main": "./dist/index.js",
   "scripts": {
