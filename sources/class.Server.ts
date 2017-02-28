@@ -148,9 +148,14 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
         }.bind(this));
 
-        this._server.listen(this._opts.port, this._opts.host, this._opts.backlog, function() {
+        this._server.listen(this._opts.port, this._opts.host, this._opts.backlog, function(): void {
 
             server.emit("started");
+        });
+
+        this._server.on("error", function(e: any): void {
+
+            server.emit("error", e);
         });
 
         return this;
