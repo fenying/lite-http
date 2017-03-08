@@ -65,6 +65,16 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         }
     }
 
+    public close(): Server {
+
+        this._server.close((): void => {
+
+            this.emit("close");
+        });
+
+        return this;
+    }
+
     public register(
         method: HTTPMethod,
         uri: string | RegExp,
