@@ -48,7 +48,8 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
             "PATCH": [],
             "DELETE": [],
             "OPTIONS": [],
-            "HEAD": []
+            "HEAD": [],
+            "ANY": []
         };
 
         if (opts) {
@@ -102,20 +103,17 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
     public notFound(handler: RequestHandler): Server {
 
-        this._errorHandlers["notFound"] = handler;
+        this._errorHandlers["NOT_FOUND"] = handler;
 
         return this;
     }
 
     public start(): Server {
 
-        let server: Server = this;
-
-        this._server = libHTTP.createServer(function(
-            this: Server,
+        this._server = libHTTP.createServer(async (
             req: ServerRequest,
             resp: libHTTP.ServerResponse
-        ): void {
+        ) => {
 
             req.params = {};
 
@@ -129,43 +127,82 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             url = undefined;
 
-            let cb = function() {
+            let router: RequestHandler;
 
-                if (!resp.finished) {
+            for (let item of this._handlers[req.method]) {
 
-                    resp.end();
-                }
-            };
-
-            for (let router of this._handlers[req.method]) {
-
-                if (router.route(req.path, req.params)) {
-
-                    router.handler.call(this, req, resp, cb);
-                    return;
+                if (item.route(req.path, req.params)) {
+                    router = item.handler;
+                    break;
                 }
             }
 
-            if (this._errorHandlers["notFound"]) {
+            if (!router) {
 
-                this._errorHandlers["notFound"].call(this, req, resp, cb);
+                for (let item of this._handlers["ANY"]) {
+
+                    if (item.route(req.path, req.params)) {
+                        router = item.handler;
+                        break;
+                    }
+                }
+
+                if (!router) {
+
+                    router = this._errorHandlers["NOT_FOUND"];
+                }
             }
-            else {
+
+            if (router) {
+
+                try {
+
+                    await router(req, resp);
+
+                    if (!resp.finished) {
+
+                        resp.end();
+                    }
+                }
+                catch (e) {
+
+                    if (this._errorHandlers["HANDLER_ERROR"]) {
+
+                        await this._errorHandlers["HANDLER_ERROR"](req, resp);
+                    }
+                    else {
+
+                        resp.writeHead(500, "INTERNAL ERROR");
+                        if (!resp.finished) {
+
+                            resp.end();
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            try {
 
                 resp.writeHead(404, "NOT FOUND");
                 resp.end();
             }
+            catch (e) {
 
-        }.bind(this));
+                this.emit("error", e);
+            }
 
-        this._server.listen(this._opts.port, this._opts.host, this._opts.backlog, function(): void {
-
-            server.emit("started");
         });
 
-        this._server.on("error", function(e: any): void {
+        this._server.listen(this._opts.port, this._opts.host, this._opts.backlog, (): void => {
 
-            server.emit("error", e);
+            this.emit("started");
+        });
+
+        this._server.on("error", (e: any): void => {
+
+            this.emit("error", e);
         });
 
         return this;

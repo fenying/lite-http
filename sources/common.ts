@@ -3,9 +3,12 @@ import libHTTP = require("http");
 
 import { HashMap } from "lite-core";
 
+/**
+ * The handler for each request.
+ */
 export interface RequestHandler {
 
-    (this: HTTPServer, req: ServerRequest, resp: libHTTP.ServerResponse, next: Function): void;
+    (req: ServerRequest, resp: libHTTP.ServerResponse): Promise<void>;
 }
 
 export interface HTTPServer {
@@ -20,13 +23,22 @@ export interface HTTPServer {
 }
 
 export interface HTTPMethodHashMap<T> {
+
     "GET": T;
+
     "POST": T;
+
     "PUT": T;
+
     "PATCH": T;
+
     "DELETE": T;
+
     "OPTIONS": T;
+
     "HEAD": T;
+
+    "ANY": T;
 }
 
 export type HTTPMethod = keyof HTTPMethodHashMap<any>;
@@ -38,7 +50,8 @@ export const HTTPMethods: string[] = [
     "PATCH",
     "DELETE",
     "OPTIONS",
-    "HEAD"
+    "HEAD",
+    "ANY"
 ];
 
 export enum ServerError {
