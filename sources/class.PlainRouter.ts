@@ -2,13 +2,19 @@ import { RequestHandler } from "./common";
 
 import { Router } from "./internal";
 
+import { HashMap } from "lite-core";
+
 class PlainRouter implements Router {
 
     private _path: string;
 
     public handler: RequestHandler;
 
-    public constructor(rule: string, cb: RequestHandler) {
+    public options: HashMap<any>;
+
+    public constructor(rule: string, cb: RequestHandler, opts: HashMap<any>) {
+
+        this.options = opts;
 
         if (rule.endsWith("/")) {
 

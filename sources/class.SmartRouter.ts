@@ -17,7 +17,11 @@ class SmartRouter implements Router {
 
     public handler: RequestHandler;
 
-    public constructor(expr: string, cb: RequestHandler) {
+    public options: HashMap<any>;
+
+    public constructor(expr: string, cb: RequestHandler, opts: HashMap<any>) {
+
+        this.options = opts;
 
         let replacement: string[] = [];
         let keys: string[] = [];

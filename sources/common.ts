@@ -1,4 +1,6 @@
 
+import libEvents = require("events");
+
 import libHTTP = require("http");
 
 import { HashMap } from "lite-core";
@@ -27,18 +29,44 @@ export enum ServerStatus {
     CLOSING
 }
 
-export interface HTTPServer {
+export interface HTTPServer extends libEvents.EventEmitter {
 
+    /**
+     * Added a handler for specific URI and HTTP Method.
+     * @param method The HTTP method to be handled
+     * @param uri The URI to be handled
+     * @param handler The handler function
+     */
     register(
         method: HTTPMethod | "ERROR",
         uri: string | RegExp,
         handler: RequestHandler
     ): HTTPServer;
 
+    /**
+     * Added a handler for specific URI and HTTP Method.
+     * @param method The HTTP method to be handled
+     * @param uri The URI to be handled
+     * @param options The options for the new handler
+     * @param handler The handler function
+     */
+    register(
+        method: HTTPMethod | "ERROR",
+        uri: string | RegExp,
+        options: HashMap<any>,
+        handler: RequestHandler
+    ): HTTPServer;
+
+    /**
+     * Start the server.
+     */
     start(): HTTPServer;
 
     close(): HTTPServer;
 
+    /**
+     * Get the status of server.
+     */
     status: ServerStatus;
 }
 
@@ -58,7 +86,7 @@ export interface HTTPMethodHashMap<T, H> {
 
     "HEAD": T[];
 
-    "ERROR": Dictionary<H>;
+    "ERROR": HashMap<H>;
 }
 
 export type HTTPMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
@@ -147,6 +175,11 @@ export interface ServerRequest extends libHTTP.IncomingMessage {
      * The method of request.
      */
     method: HTTPMethod;
+
+    /**
+     * The options for this handler.
+     */
+    handlerOptions: HashMap<any>;
 }
 
 export type ServerResponse = libHTTP.ServerResponse;

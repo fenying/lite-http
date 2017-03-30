@@ -26,7 +26,13 @@ import {
     ServerStatus
 } from "./common";
 
-export class Server extends libEvents.EventEmitter implements HTTPServer {
+export const EVENT_SHUTTING_DOWN: string = "SHUTTING_DOWN";
+
+export const EVENT_NOT_FOUND: string = "NOT_FOUND";
+
+export const EVENT_HANDLER_FAILURE: string = "HANDLER_FAILURE";
+
+class Server extends libEvents.EventEmitter implements HTTPServer {
 
     protected _opts: ServerOptions;
 
@@ -68,13 +74,47 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
             this._opts.host = DEFAULT_HOST;
         }
 
-        this.register("ERROR", "SHUTTING_DOWN", async function(req: ServerRequest, resp: ServerResponse) {
-            resp.writeHead(500, "SYSTEM MAINTANCING");
-            resp.end(`<h1 style="text-align: center;">Server is under maintance</h1>`);
+        this.register("ERROR", EVENT_SHUTTING_DOWN, async (req: ServerRequest, resp: ServerResponse) => {
+
+            this.displayHTTPError(resp, 500, "SYSTEM MAINTANCING");
+
             req.destroy();
+
             return;
         });
+
+        this.register("ERROR", EVENT_NOT_FOUND, async (req: ServerRequest, resp: ServerResponse) => {
+
+            this.displayHTTPError(resp, 404, "NOT FOUND");
+            return;
+        });
+
+        this.register("ERROR", EVENT_HANDLER_FAILURE, async (req: ServerRequest, resp: ServerResponse) => {
+
+            if (!resp.finished) {
+
+                this.displayHTTPError(resp, 500, "INTERNAL ERROR");
+            }
+
+            return;
+        });
+
     }
+
+    public displayHTTPError(resp: ServerResponse, code: number, msg: string): void {
+        resp.writeHead(code, msg);
+        resp.end(`<!doctype html>
+<html lang="en_US">
+    <head>
+        <meta charset="utf-8">
+        <title>${msg}</title>
+    </head>
+    <body>
+        <h1 style="text-align: center">HTTP ${code}</h1>
+        <h2 style="text-align: center">${msg}</h2>
+    </body>
+</html>`);
+}
 
     public get status(): ServerStatus {
 
@@ -101,17 +141,24 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         return this;
     }
 
-    /**
-     * Added a handler for specific URI and HTTP Method.
-     * @param method The HTTP method to be handled
-     * @param uri The URI to be handled
-     * @param handler The handler function
-     */
     public register(
         method: HTTPMethod | "ERROR",
         uri: string | RegExp,
-        handler: RequestHandler
+        ...args: any[]
     ): Server {
+
+        let handler: RequestHandler;
+        let options: HashMap<any>;
+
+        if (args.length === 2) {
+
+            options = args[0];
+            handler = args[1];
+        }
+        else {
+
+            handler = args[0];
+        }
 
         if (method === "ERROR") {
 
@@ -137,16 +184,16 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             if (uri.indexOf("{") > -1) {
 
-                this._handlers[method].push(new SmartRouter(uri, handler));
+                this._handlers[method].push(new SmartRouter(uri, handler, options));
             }
             else {
 
-                this._handlers[method].push(new PlainRouter(uri, handler));
+                this._handlers[method].push(new PlainRouter(uri, handler, options));
             }
         }
         else {
 
-            this._handlers[method].push(new RegExpRouter(uri, handler));
+            this._handlers[method].push(new RegExpRouter(uri, handler, options));
         }
 
         return this;
@@ -175,19 +222,10 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         }
         catch (e) {
 
-            if (handler = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
+            handler = this._handlers["ERROR"][EVENT_HANDLER_FAILURE];
 
-                await handler(req, resp);
+            await handler(req, resp);
 
-                if (!resp.finished) {
-
-                    resp.end();
-                }
-
-                return;
-            }
-
-            resp.writeHead(500, "INTERNAL ERROR");
             if (!resp.finished) {
 
                 resp.end();
@@ -195,9 +233,6 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         }
     }
 
-    /**
-     * Start the server.
-     */
     public start(): Server {
 
         if (this._server) {
@@ -216,7 +251,7 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             let url: libURL.Url = libURL.parse(req.url, true);
 
-            req.path = (url.pathname[url.pathname.length - 1] === "/") ? url.pathname.substr(0, url.pathname.length - 1) : url.pathname;
+            req.path = url.pathname.endsWith("/") ? url.pathname.substr(0, url.pathname.length - 1) : url.pathname;
 
             req.queries = url.query;
 
@@ -228,7 +263,7 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             if (this._status === ServerStatus.CLOSING) {
 
-                handler = this._handlers["ERROR"]["SHUTTING_DOWN"];
+                handler = this._handlers["ERROR"][EVENT_SHUTTING_DOWN];
 
                 this._executeHandler(handler, req, resp);
 
@@ -245,18 +280,10 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             if (!handler) {
 
-                handler = this._handlers["ERROR"]["NOT_FOUND"];
+                handler = this._handlers["ERROR"][EVENT_NOT_FOUND];
             }
 
-            if (handler) {
-
-                this._executeHandler(handler, req, resp);
-
-                return;
-            }
-
-            resp.writeHead(404, "NOT FOUND");
-            resp.end();
+            this._executeHandler(handler, req, resp);
 
         });
 
@@ -274,4 +301,9 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
         return this;
     }
+}
+
+export function createServer(opts?: ServerOptions): HTTPServer {
+
+    return new Server(opts);
 }

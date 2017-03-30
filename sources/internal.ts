@@ -1,4 +1,6 @@
 
+import { HashMap } from "lite-core";
+
 import {
     RequestHandler,
     RequestMiddleware
@@ -7,6 +9,8 @@ import {
 export interface Router {
 
     handler: RequestHandler;
+
+    options: HashMap<any>;
 
     route(path: string, data?: any): boolean;
 }
