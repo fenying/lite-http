@@ -19,14 +19,18 @@ import {
     HTTPMethod,
     HTTPMethodHashMap,
     ServerRequest,
+    ServerResponse,
     RequestHandler,
     RequestMiddleware,
-    HTTPServer
+    HTTPServer,
+    ServerStatus
 } from "./common";
 
 export class Server extends libEvents.EventEmitter implements HTTPServer {
 
     protected _opts: ServerOptions;
+
+    protected _status: ServerStatus;
 
     protected _server: libHTTP.Server;
 
@@ -37,6 +41,8 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         super();
 
         this._opts = {};
+
+        this._status = ServerStatus.IDLE;
 
         this._handlers = {
             "GET": [],
@@ -61,11 +67,33 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
             this._opts.port = DEFAULT_PORT;
             this._opts.host = DEFAULT_HOST;
         }
+
+        this.register("ERROR", "SHUTTING_DOWN", async function(req: ServerRequest, resp: ServerResponse) {
+            resp.writeHead(500, "SYSTEM MAINTANCING");
+            resp.end(`<h1 style="text-align: center;">Server is under maintance</h1>`);
+            req.destroy();
+            return;
+        });
+    }
+
+    public get status(): ServerStatus {
+
+        return this._status;
     }
 
     public close(): Server {
 
+        if (this._status !== ServerStatus.WORKING) {
+
+            return this;
+        }
+
+        this._status = ServerStatus.CLOSING;
+
         this._server.close((): void => {
+
+            this._status = ServerStatus.IDLE;
+            this._server = undefined;
 
             this.emit("close");
         });
@@ -118,7 +146,49 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         return this;
     }
 
+    protected async _executeHandler(
+        router: RequestHandler,
+        req: ServerRequest,
+        resp: libHTTP.ServerResponse
+    ) {
+
+        try {
+
+            await router(req, resp);
+
+            if (!resp.finished) {
+
+                resp.end();
+            }
+        }
+        catch (e) {
+
+            if (router = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
+
+                await router(req, resp);
+
+                if (!resp.finished) {
+
+                    resp.end();
+                }
+
+                return;
+            }
+
+            resp.writeHead(500, "INTERNAL ERROR");
+            if (!resp.finished) {
+
+                resp.end();
+            }
+        }
+    }
+
     public start(): Server {
+
+        if (this._server) {
+
+            return this;
+        }
 
         this._server = libHTTP.createServer(async (
             req: ServerRequest,
@@ -139,6 +209,15 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             let router: RequestHandler;
 
+            if (this._status === ServerStatus.CLOSING) {
+
+                router = this._handlers["ERROR"]["SHUTTING_DOWN"];
+
+                this._executeHandler(router, req, resp);
+
+                return this;
+            }
+
             for (let item of this._handlers[req.method]) {
 
                 if (item.route(req.path, req.params)) {
@@ -154,35 +233,7 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             if (router) {
 
-                try {
-
-                    await router(req, resp);
-
-                    if (!resp.finished) {
-
-                        resp.end();
-                    }
-                }
-                catch (e) {
-
-                    if (router = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
-
-                        await router(req, resp);
-
-                        if (!resp.finished) {
-
-                            resp.end();
-                        }
-
-                        return;
-                    }
-
-                    resp.writeHead(500, "INTERNAL ERROR");
-                    if (!resp.finished) {
-
-                        resp.end();
-                    }
-                }
+                this._executeHandler(router, req, resp);
 
                 return;
             }
@@ -193,6 +244,8 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         });
 
         this._server.listen(this._opts.port, this._opts.host, this._opts.backlog, (): void => {
+
+            this._status = ServerStatus.WORKING;
 
             this.emit("started");
         });

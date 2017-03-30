@@ -19,15 +19,26 @@ export interface RequestMiddleware {
     (req: ServerRequest, resp: libHTTP.ServerResponse): Promise<boolean>;
 }
 
+export enum ServerStatus {
+
+    IDLE,
+    WORKING,
+    CLOSING
+}
+
 export interface HTTPServer {
 
     register(
-        method: HTTPMethod,
+        method: HTTPMethod | "ERROR",
         uri: string | RegExp,
         handler: RequestHandler
     ): HTTPServer;
 
     start(): HTTPServer;
+
+    close(): HTTPServer;
+
+    status: ServerStatus;
 }
 
 export interface HTTPMethodHashMap<T, H> {

@@ -32,4 +32,14 @@ serv.start().on("started", function(): void {
 }).on("error", function(e: Error): void {
 
     console.error(e);
+
+}).on("close", function(): void {
+
+    console.info("Server has been shutdown.");
 });
+
+setTimeout(function(): void {
+
+    serv.close();
+
+}, 5000);
