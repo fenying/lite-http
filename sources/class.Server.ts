@@ -9,7 +9,7 @@ import RegExpRouter = require("./class.RegExpRouter");
 import SmartRouter = require("./class.SmartRouter");
 import PlainRouter = require("./class.PlainRouter");
 
-import { Router } from "./internal";
+import { Router, Middleware } from "./internal";
 
 import {
     ServerOptions,
@@ -20,6 +20,7 @@ import {
     HTTPMethodHashMap,
     ServerRequest,
     RequestHandler,
+    RequestMiddleware,
     HTTPServer
 } from "./common";
 
@@ -29,17 +30,13 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
     protected _server: libHTTP.Server;
 
-    protected _errorHandlers: HashMap<RequestHandler>;
-
-    protected _handlers: HTTPMethodHashMap<Router[]>;
+    protected _handlers: HTTPMethodHashMap<Router, RequestHandler>;
 
     public constructor(opts?: ServerOptions) {
 
         super();
 
         this._opts = {};
-
-        this._errorHandlers = {};
 
         this._handlers = {
             "GET": [],
@@ -49,7 +46,7 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
             "DELETE": [],
             "OPTIONS": [],
             "HEAD": [],
-            "ANY": []
+            "ERROR": {}
         };
 
         if (opts) {
@@ -77,10 +74,30 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
     }
 
     public register(
-        method: HTTPMethod,
+        method: HTTPMethod | "ERROR",
         uri: string | RegExp,
         handler: RequestHandler
     ): Server {
+
+        if (method === "ERROR") {
+
+            if (typeof uri !== "string") {
+
+                if (this.listenerCount("error")) {
+
+                    this.emit("error", new Error("Invalid type of ERROR handler."));
+                    return this;
+                }
+                else {
+
+                    throw new Error("Invalid type for ERROR.");
+                }
+            }
+
+            this._handlers["ERROR"][uri] = handler;
+
+            return this;
+        }
 
         if (typeof uri === "string") {
 
@@ -97,13 +114,6 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             this._handlers[method].push(new RegExpRouter(uri, handler));
         }
-
-        return this;
-    }
-
-    public notFound(handler: RequestHandler): Server {
-
-        this._errorHandlers["NOT_FOUND"] = handler;
 
         return this;
     }
@@ -139,18 +149,7 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             if (!router) {
 
-                for (let item of this._handlers["ANY"]) {
-
-                    if (item.route(req.path, req.params)) {
-                        router = item.handler;
-                        break;
-                    }
-                }
-
-                if (!router) {
-
-                    router = this._errorHandlers["NOT_FOUND"];
-                }
+                router = this._handlers["ERROR"]["NOT_FOUND"];
             }
 
             if (router) {
@@ -166,32 +165,30 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
                 }
                 catch (e) {
 
-                    if (this._errorHandlers["HANDLER_ERROR"]) {
+                    if (router = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
 
-                        await this._errorHandlers["HANDLER_ERROR"](req, resp);
-                    }
-                    else {
+                        await router(req, resp);
 
-                        resp.writeHead(500, "INTERNAL ERROR");
                         if (!resp.finished) {
 
                             resp.end();
                         }
+
+                        return;
+                    }
+
+                    resp.writeHead(500, "INTERNAL ERROR");
+                    if (!resp.finished) {
+
+                        resp.end();
                     }
                 }
 
                 return;
             }
 
-            try {
-
-                resp.writeHead(404, "NOT FOUND");
-                resp.end();
-            }
-            catch (e) {
-
-                this.emit("error", e);
-            }
+            resp.writeHead(404, "NOT FOUND");
+            resp.end();
 
         });
 

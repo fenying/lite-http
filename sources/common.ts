@@ -11,6 +11,14 @@ export interface RequestHandler {
     (req: ServerRequest, resp: libHTTP.ServerResponse): Promise<void>;
 }
 
+/**
+ * The middleware for each request.
+ */
+export interface RequestMiddleware {
+
+    (req: ServerRequest, resp: libHTTP.ServerResponse): Promise<boolean>;
+}
+
 export interface HTTPServer {
 
     register(
@@ -22,26 +30,26 @@ export interface HTTPServer {
     start(): HTTPServer;
 }
 
-export interface HTTPMethodHashMap<T> {
+export interface HTTPMethodHashMap<T, H> {
 
-    "GET": T;
+    "GET": T[];
 
-    "POST": T;
+    "POST": T[];
 
-    "PUT": T;
+    "PUT": T[];
 
-    "PATCH": T;
+    "PATCH": T[];
 
-    "DELETE": T;
+    "DELETE": T[];
 
-    "OPTIONS": T;
+    "OPTIONS": T[];
 
-    "HEAD": T;
+    "HEAD": T[];
 
-    "ANY": T;
+    "ERROR": Dictionary<H>;
 }
 
-export type HTTPMethod = keyof HTTPMethodHashMap<any>;
+export type HTTPMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
 export const HTTPMethods: string[] = [
     "GET",
@@ -50,8 +58,7 @@ export const HTTPMethods: string[] = [
     "PATCH",
     "DELETE",
     "OPTIONS",
-    "HEAD",
-    "ANY"
+    "HEAD"
 ];
 
 export enum ServerError {

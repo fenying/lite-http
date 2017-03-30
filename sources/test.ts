@@ -11,15 +11,17 @@ serv.register("GET", "/", async function(req: HTTP.ServerRequest, resp: HTTP.Ser
 
 }).register("GET", "/abc", async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
 
-    resp.writeHead(200, "OK");
-    resp.write("Hello World!");
-
     return Promise.reject(new Error("fff"));
 
-}).notFound(async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
+}).register("ERROR", "NOT_FOUND", async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
 
     resp.writeHead(404, "NOT FOUND");
     resp.write("Who are you, what are you looking.");
+
+}).register("ERROR", "HANDLER_FAILURE", async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
+
+    resp.writeHead(500, "SYSTEM FAILURE");
+    resp.write("System crashed...");
 
 });
 

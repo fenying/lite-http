@@ -1,5 +1,8 @@
 
-import { RequestHandler } from "./common";
+import {
+    RequestHandler,
+    RequestMiddleware
+} from "./common";
 
 export interface Router {
 
@@ -8,3 +11,9 @@ export interface Router {
     route(path: string, data?: any): boolean;
 }
 
+export interface Middleware {
+
+    handler: RequestMiddleware;
+
+    route(path: string, data?: any): boolean;
+}
