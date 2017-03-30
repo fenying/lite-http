@@ -22,6 +22,7 @@ export interface RequestMiddleware {
 export enum ServerStatus {
 
     IDLE,
+    STARTING,
     WORKING,
     CLOSING
 }

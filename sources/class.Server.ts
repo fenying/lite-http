@@ -101,6 +101,12 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         return this;
     }
 
+    /**
+     * Added a handler for specific URI and HTTP Method.
+     * @param method The HTTP method to be handled
+     * @param uri The URI to be handled
+     * @param handler The handler function
+     */
     public register(
         method: HTTPMethod | "ERROR",
         uri: string | RegExp,
@@ -146,15 +152,21 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         return this;
     }
 
+    /**
+     * This private method helps execute a handler.
+     * @param handler The handler to be executed.
+     * @param req The request controlling object.
+     * @param resp The response controlling object.
+     */
     protected async _executeHandler(
-        router: RequestHandler,
+        handler: RequestHandler,
         req: ServerRequest,
         resp: libHTTP.ServerResponse
     ) {
 
         try {
 
-            await router(req, resp);
+            await handler(req, resp);
 
             if (!resp.finished) {
 
@@ -163,9 +175,9 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         }
         catch (e) {
 
-            if (router = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
+            if (handler = this._handlers["ERROR"]["HANDLER_FAILURE"]) {
 
-                await router(req, resp);
+                await handler(req, resp);
 
                 if (!resp.finished) {
 
@@ -183,12 +195,17 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
         }
     }
 
+    /**
+     * Start the server.
+     */
     public start(): Server {
 
         if (this._server) {
 
             return this;
         }
+
+        this._status = ServerStatus.STARTING;
 
         this._server = libHTTP.createServer(async (
             req: ServerRequest,
@@ -207,13 +224,13 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
 
             url = undefined;
 
-            let router: RequestHandler;
+            let handler: RequestHandler;
 
             if (this._status === ServerStatus.CLOSING) {
 
-                router = this._handlers["ERROR"]["SHUTTING_DOWN"];
+                handler = this._handlers["ERROR"]["SHUTTING_DOWN"];
 
-                this._executeHandler(router, req, resp);
+                this._executeHandler(handler, req, resp);
 
                 return this;
             }
@@ -221,19 +238,19 @@ export class Server extends libEvents.EventEmitter implements HTTPServer {
             for (let item of this._handlers[req.method]) {
 
                 if (item.route(req.path, req.params)) {
-                    router = item.handler;
+                    handler = item.handler;
                     break;
                 }
             }
 
-            if (!router) {
+            if (!handler) {
 
-                router = this._handlers["ERROR"]["NOT_FOUND"];
+                handler = this._handlers["ERROR"]["NOT_FOUND"];
             }
 
-            if (router) {
+            if (handler) {
 
-                this._executeHandler(router, req, resp);
+                this._executeHandler(handler, req, resp);
 
                 return;
             }
