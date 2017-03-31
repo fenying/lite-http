@@ -1,18 +1,16 @@
-import { RequestHandler } from "./common";
-
 import { Router } from "./internal";
 
 import { HashMap } from "lite-core";
 
-class RegExpRouter implements Router {
+class RegExpRouter<T> implements Router<T> {
 
     private _path: RegExp;
 
-    public handler: RequestHandler;
+    public handler: T;
 
     public options: HashMap<any>;
 
-    public constructor(rule: RegExp, cb: RequestHandler, opts: HashMap<any>) {
+    public constructor(rule: RegExp, cb: T, opts: HashMap<any>) {
 
         this.options = opts;
 

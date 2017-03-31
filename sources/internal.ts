@@ -3,12 +3,12 @@ import { HashMap } from "lite-core";
 
 import {
     RequestHandler,
-    RequestMiddleware
+    MiddlewareHandler
 } from "./common";
 
-export interface Router {
+export interface Router<T> {
 
-    handler: RequestHandler;
+    handler: T;
 
     options: HashMap<any>;
 
@@ -17,7 +17,7 @@ export interface Router {
 
 export interface Middleware {
 
-    handler: RequestMiddleware;
+    handler: MiddlewareHandler;
 
     route(path: string, data?: any): boolean;
 }

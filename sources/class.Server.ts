@@ -21,9 +21,11 @@ import {
     ServerRequest,
     ServerResponse,
     RequestHandler,
-    RequestMiddleware,
+    MiddlewareHandler,
     HTTPServer,
-    ServerStatus
+    ServerStatus,
+    HookType,
+    MiddlewareHashMap
 } from "./common";
 
 export const EVENT_SHUTTING_DOWN: string = "SHUTTING_DOWN";
@@ -40,7 +42,9 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
     protected _server: libHTTP.Server;
 
-    protected _handlers: HTTPMethodHashMap<Router, RequestHandler>;
+    protected _handlers: HTTPMethodHashMap<Router<RequestHandler>, RequestHandler>;
+
+    protected _middlewares: MiddlewareHashMap<Router<MiddlewareHandler>>;
 
     public constructor(opts?: ServerOptions) {
 
@@ -59,6 +63,12 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
             "OPTIONS": [],
             "HEAD": [],
             "ERROR": {}
+        };
+
+        this._middlewares = {
+            "after-router": [],
+            "before-router": [],
+            "end": []
         };
 
         if (opts) {
@@ -199,6 +209,58 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
         return this;
     }
 
+    public hook(
+        type: HookType | "before-all",
+        ...args: any[]
+    ): Server {
+
+        let uri: string | RegExp;
+        let handler: MiddlewareHandler;
+
+        let router: Router<MiddlewareHandler>;
+
+        if (args.length === 2) {
+            uri = args[0];
+            handler = args[1];
+        }
+        else {
+
+            uri = null;
+            handler = args[0];
+        }
+
+        if (typeof uri === "string") {
+
+            if (uri.indexOf("{") > -1) {
+
+                router = new SmartRouter(uri, handler, undefined);
+            }
+            else {
+
+                router = new PlainRouter(uri, handler, undefined);
+            }
+        }
+        else if (uri === null) {
+
+            router = new PlainRouter(null, handler, undefined);
+        }
+        else {
+
+            router = new RegExpRouter(uri, handler, undefined);
+        }
+
+        if (type === "before-all") {
+
+            this._middlewares["before-router"].unshift(router);
+        }
+        else {
+
+            this._middlewares[type].push(router);
+        }
+
+        return this;
+    }
+
     /**
      * This private method helps execute a handler.
      * @param handler The handler to be executed.
@@ -269,7 +331,25 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
                 this._executeHandler(handler, req, resp);
 
-                return this;
+                return ;
+            }
+
+            for (let item of this._middlewares["before-router"]) {
+
+                if (item.route(req.path, req.params)) {
+
+                    try {
+
+                        if (await item.handler(req, resp) === false) {
+
+                            return;
+                        }
+                    }
+                    catch (e) {
+
+                        return;
+                    }
+                }
             }
 
             for (let item of this._handlers[req.method]) {
@@ -285,8 +365,46 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
                 handler = this._handlers["ERROR"][EVENT_NOT_FOUND];
             }
+            else {
 
-            this._executeHandler(handler, req, resp);
+                for (let item of this._middlewares["after-router"]) {
+
+                    if (item.route(req.path, req.params)) {
+
+                        try {
+
+                            if (await item.handler(req, resp) === false) {
+
+                                return;
+                            }
+                        }
+                        catch (e) {
+
+                            return;
+                        }
+                    }
+                }
+            }
+
+            await this._executeHandler(handler, req, resp);
+
+            for (let item of this._middlewares["end"]) {
+
+                if (item.route(req.path, req.params)) {
+
+                    try {
+
+                        if (await item.handler(req, resp) === false) {
+
+                            return;
+                        }
+                    }
+                    catch (e) {
+
+                        return;
+                    }
+                }
+            }
 
         });
 

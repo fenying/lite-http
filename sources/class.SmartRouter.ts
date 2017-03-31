@@ -1,5 +1,3 @@
-import { RequestHandler } from "./common";
-
 import { Router } from "./internal";
 
 import { HashMap, Exception } from "lite-core";
@@ -9,17 +7,17 @@ import "langext";
 /**
  * A smart router-rule, supporting variable extraction.
  */
-class SmartRouter implements Router {
+class SmartRouter<T> implements Router<T> {
 
     private keys: string[];
 
     private expr: RegExp;
 
-    public handler: RequestHandler;
+    public handler: T;
 
     public options: HashMap<any>;
 
-    public constructor(expr: string, cb: RequestHandler, opts: HashMap<any>) {
+    public constructor(expr: string, cb: T, opts: HashMap<any>) {
 
         this.options = opts;
 

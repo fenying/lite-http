@@ -9,10 +9,27 @@ serv.register("GET", "/", async function(req: HTTP.ServerRequest, resp: HTTP.Ser
 
     resp.write("Hello World!");
 
-}).register("GET", "/abc", async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
+}).register("GET", "/login", async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
 
-    return Promise.reject(new Error("fff"));
+    resp.end("Hello");
 
+}).hook("after-router", null, async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
+
+    if (req.path !== "/login") {
+
+        if (req.headers["auth-code"] === undefined) {
+
+            resp.setHeader("location", "/login");
+            resp.writeHead(302, "REDIRECT");
+        }
+    }
+
+    return true;
+
+}).hook("end", null, async function(req: HTTP.ServerRequest, resp: HTTP.ServerResponse) {
+
+    console.info(`${req.method} ${req.url} ${resp.statusCode}.`);
+    return true;
 });
 
 serv.start().on("started", function(): void {
@@ -27,9 +44,3 @@ serv.start().on("started", function(): void {
 
     console.info("Server has been shutdown.");
 });
-
-setTimeout(function(): void {
-
-    serv.close();
-
-}, 5000);

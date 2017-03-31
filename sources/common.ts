@@ -16,7 +16,7 @@ export interface RequestHandler {
 /**
  * The middleware for each request.
  */
-export interface RequestMiddleware {
+export interface MiddlewareHandler {
 
     (req: ServerRequest, resp: libHTTP.ServerResponse): Promise<boolean>;
 }
@@ -58,6 +58,28 @@ export interface HTTPServer extends libEvents.EventEmitter {
     ): HTTPServer;
 
     /**
+     * Added a middleware for specific URI and HTTP Method.
+     * @param type The position to hook.
+     * @param uri The URI to be handled
+     * @param handler The handler function
+     */
+    hook(
+        type: HookType | "before-all",
+        uri: string | RegExp,
+        handler: MiddlewareHandler
+    ): HTTPServer;
+
+    /**
+     * Added a middleware for specific URI and HTTP Method.
+     * @param type The position to hook.
+     * @param handler The handler function
+     */
+    hook(
+        type: HookType | "before-all",
+        handler: MiddlewareHandler
+    ): HTTPServer;
+
+    /**
      * Start the server.
      */
     start(): HTTPServer;
@@ -90,6 +112,17 @@ export interface HTTPMethodHashMap<T, H> {
 }
 
 export type HTTPMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
+
+export type HookType = "after-router" | "before-router" | "end";
+
+export interface MiddlewareHashMap<T> {
+
+    "after-router": T[];
+
+    "before-router": T[];
+
+    "end": T[];
+}
 
 export const HTTPMethods: string[] = [
     "GET",

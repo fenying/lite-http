@@ -1,22 +1,21 @@
-import { RequestHandler } from "./common";
 
 import { Router } from "./internal";
 
 import { HashMap } from "lite-core";
 
-class PlainRouter implements Router {
+class PlainRouter<T> implements Router<T> {
 
     private _path: string;
 
-    public handler: RequestHandler;
+    public handler: T;
 
     public options: HashMap<any>;
 
-    public constructor(rule: string, cb: RequestHandler, opts: HashMap<any>) {
+    public constructor(rule: string, cb: T, opts: HashMap<any>) {
 
         this.options = opts;
 
-        if (rule.endsWith("/")) {
+        if (rule && rule.endsWith("/")) {
 
             this._path = rule.substr(0, rule.length - 1);
         }
@@ -30,7 +29,7 @@ class PlainRouter implements Router {
 
     public route(path: string): boolean {
 
-        return path === this._path;
+        return this._path === null || path === this._path;
     }
 }
 
