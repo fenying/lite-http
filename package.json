@@ -22,7 +22,7 @@
   "types": "./dist/index.d.ts",
   "typings": "./dist/index.d.ts",
   "dependencies": {
-    "lite-core": "0.1.1"
+    "lite-core": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^7.0.0",
