@@ -21,6 +21,8 @@ serv.register("GET", "/", async function(req: HTTP.ServerRequest, resp: HTTP.Ser
 
             resp.setHeader("location", "/login");
             resp.writeHead(302, "REDIRECT");
+            resp.end();
+            return false;
         }
     }
 
