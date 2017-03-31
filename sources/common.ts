@@ -178,8 +178,14 @@ export interface ServerRequest extends libHTTP.IncomingMessage {
 
     /**
      * The options for this handler.
+     * Default to be undefined.
      */
-    handlerOptions: HashMap<any>;
+    handlerOptions?: HashMap<any>;
+
+    /**
+     * The options for this handler.
+     */
+    server: HTTPServer;
 }
 
 export type ServerResponse = libHTTP.ServerResponse;

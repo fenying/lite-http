@@ -251,6 +251,8 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
             let url: libURL.Url = libURL.parse(req.url, true);
 
+            req.server = this;
+
             req.path = url.pathname.endsWith("/") ? url.pathname.substr(0, url.pathname.length - 1) : url.pathname;
 
             req.queries = url.query;
@@ -274,6 +276,7 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
                 if (item.route(req.path, req.params)) {
                     handler = item.handler;
+                    req.handlerOptions = item.options;
                     break;
                 }
             }
