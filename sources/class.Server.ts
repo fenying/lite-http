@@ -34,6 +34,8 @@ export const EVENT_NOT_FOUND: string = "NOT_FOUND";
 
 export const EVENT_HANDLER_FAILURE: string = "HANDLER_FAILURE";
 
+export const EVENT_METHOD_NOT_ALLOWED: string = "METHOD_NOT_ALLOWED";
+
 class Server extends libEvents.EventEmitter implements HTTPServer {
 
     protected _opts: ServerOptions;
@@ -104,6 +106,16 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
             if (!resp.finished) {
 
                 this.displayHTTPError(resp, 500, "INTERNAL ERROR");
+            }
+
+            return;
+        });
+
+        this.register("ERROR", EVENT_METHOD_NOT_ALLOWED, async (req: ServerRequest, resp: ServerResponse) => {
+
+            if (!resp.finished) {
+
+                this.displayHTTPError(resp, 405, "METHOD NOT ALLOWED");
             }
 
             return;
@@ -325,13 +337,20 @@ class Server extends libEvents.EventEmitter implements HTTPServer {
 
             let handler: RequestHandler;
 
+            if (!this._handlers[req.method]) {
+
+                this._executeHandler(this._handlers["ERROR"][EVENT_METHOD_NOT_ALLOWED], req, resp);
+
+                return;
+            }
+
             if (this._status === ServerStatus.CLOSING) {
 
                 handler = this._handlers["ERROR"][EVENT_SHUTTING_DOWN];
 
                 this._executeHandler(handler, req, resp);
 
-                return ;
+                return;
             }
 
             for (let item of this._middlewares["before-router"]) {
